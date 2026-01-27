@@ -44,9 +44,25 @@ const updateTaskValidator = [
     validateRequest
 ];
 
+// Auth Validators
+const registerValidator = [
+    body('name').trim().notEmpty().withMessage('Please add a name'),
+    body('email').isEmail().withMessage('Please add a valid email'),
+    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+    validateRequest
+];
+
+const loginValidator = [
+    body('email').isEmail().withMessage('Please add a valid email'),
+    body('password').exists().withMessage('Password is required'),
+    validateRequest
+];
+
 module.exports = {
     createProjectValidator,
     updateProjectValidator,
     createTaskValidator,
-    updateTaskValidator
+    updateTaskValidator,
+    registerValidator,
+    loginValidator
 };
