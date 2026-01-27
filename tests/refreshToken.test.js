@@ -29,7 +29,7 @@ describe('Refresh Token Controller Scenario', () => {
 
     it('should return 401 if refresh token is invalid', async () => {
         req.cookies.refreshToken = 'invalid_token';
-        jwt.verify.mockImplementation(() => { throw new Error('Invalid token'); });
+        jwt.verify.mockImplementation(() => { throw new Error('jwt malformed'); });
 
         await expect(refreshToken(req, res)).rejects.toThrow('Not authorized, token failed');
         expect(res.status).toHaveBeenCalledWith(401);

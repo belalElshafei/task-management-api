@@ -93,22 +93,27 @@ const refreshToken = async (req, res) => {
         throw new Error('Not authorized, no refresh token');
     }
 
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    try {
+        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
 
-    // Check if user still exists
-    const user = await User.findById(decoded.id);
-    if (!user) {
+        // Check if user still exists
+        const user = await User.findById(decoded.id);
+        if (!user) {
+            res.status(401);
+            throw new Error('User not found');
+        }
+
+        // Generate new access token ONLY
+        const accessToken = generateAccessToken(user._id);
+
+        res.json({
+            success: true,
+            accessToken
+        });
+    } catch (error) {
         res.status(401);
-        throw new Error('User not found');
+        throw new Error('Not authorized, token failed');
     }
-
-    // Generate new access token ONLY
-    const accessToken = generateAccessToken(user._id);
-
-    res.json({
-        success: true,
-        accessToken
-    });
 };
 
 // @desc    Logout user / Clear cookie
