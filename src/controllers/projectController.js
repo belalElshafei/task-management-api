@@ -1,12 +1,10 @@
-const Project = require('../models/Project');
+const projectService = require('../services/projectService');
 
 // @desc    Get all projects for logged-in user
 // @route   GET /api/projects
 // @access  Private
 const getProjects = async (req, res) => {
-    const projects = await Project.find({
-        owner: req.user._id
-    }).populate('owner', 'name email');
+    const projects = await projectService.getProjects(req.user._id);
 
     res.status(200).json({
         success: true,
@@ -19,11 +17,7 @@ const getProjects = async (req, res) => {
 // @route   GET /api/projects/:id
 // @access  Private
 const getProject = async (req, res) => {
-    const project = await Project.findOne({
-        _id: req.params.id,
-        owner: req.user._id
-    }).populate('owner', 'name email')
-        .populate('members', 'name email');
+    const project = await projectService.getProject(req.user._id, req.params.id);
 
     if (!project) {
         res.status(404);
@@ -40,10 +34,7 @@ const getProject = async (req, res) => {
 // @route   POST /api/projects
 // @access  Private
 const createProject = async (req, res) => {
-    const project = await Project.create({
-        ...req.body,
-        owner: req.user._id
-    });
+    const project = await projectService.createProject(req.user._id, req.body);
 
     res.status(201).json({
         success: true,
@@ -55,19 +46,13 @@ const createProject = async (req, res) => {
 // @route   PUT /api/projects/:id
 // @access  Private
 const updateProject = async (req, res) => {
-    // Allow updates to name, description, status, members
     const { name, description, status, members } = req.body;
 
-    const project = await Project.findOneAndUpdate(
-        {
-            _id: req.params.id,
-            owner: req.user._id
-        },
-        { name, description, status, members },
-        {
-            new: true,
-            runValidators: true
-        }
+    // Explicitly pass only allowed fields
+    const project = await projectService.updateProject(
+        req.user._id,
+        req.params.id,
+        { name, description, status, members }
     );
 
     if (!project) {
@@ -85,10 +70,7 @@ const updateProject = async (req, res) => {
 // @route   DELETE /api/projects/:id
 // @access  Private
 const deleteProject = async (req, res) => {
-    const project = await Project.findOneAndDelete({
-        _id: req.params.id,
-        owner: req.user._id
-    });
+    const project = await projectService.deleteProject(req.user._id, req.params.id);
 
     if (!project) {
         res.status(404);

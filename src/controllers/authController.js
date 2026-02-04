@@ -1,11 +1,8 @@
-const User = require('../models/User');
-const { generateAccessToken, generateRefreshToken } = require('../utils/tokenGenerator');
-const jwt = require('jsonwebtoken');
+const authService = require('../services/authService');
 
-// Helper to send token response
-const sendTokenResponse = (user, statusCode, res) => {
-    const accessToken = generateAccessToken(user._id);
-    const refreshToken = generateRefreshToken(user._id);
+// Helper to set cookie and send response
+const sendTokenResponse = (authData, statusCode, res) => {
+    const { user, accessToken, refreshToken } = authData;
 
     // Cookie options
     const options = {
@@ -20,12 +17,9 @@ const sendTokenResponse = (user, statusCode, res) => {
         .json({
             success: true,
             data: {
-                _id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                accessToken, // Renamed from 'token' to 'accessToken'
-            },
+                ...user,
+                accessToken
+            }
         });
 };
 
@@ -33,26 +27,12 @@ const sendTokenResponse = (user, statusCode, res) => {
 // @route   POST /api/auth/register
 // @access  Public
 const register = async (req, res) => {
-    const { name, email, password } = req.body;
-
-    const userExists = await User.findOne({ email });
-
-    if (userExists) {
-        res.status(400);
-        throw new Error('User already exists');
-    }
-
-    const user = await User.create({
-        name,
-        email,
-        password,
-    });
-
-    if (user) {
-        sendTokenResponse(user, 201, res);
-    } else {
-        res.status(400);
-        throw new Error('Invalid user data');
+    try {
+        const authData = await authService.registerUser(req.body);
+        sendTokenResponse(authData, 201, res);
+    } catch (error) {
+        res.status(400); // Bad Request for registration errors
+        throw new Error(error.message);
     }
 };
 
@@ -60,15 +40,12 @@ const register = async (req, res) => {
 // @route   POST /api/auth/login
 // @access  Public
 const login = async (req, res) => {
-    const { email, password } = req.body;
-
-    const user = await User.findOne({ email }).select('+password');
-
-    if (user && (await user.matchPassword(password))) {
-        sendTokenResponse(user, 200, res);
-    } else {
-        res.status(401);
-        throw new Error('Invalid email or password');
+    try {
+        const authData = await authService.loginUser(req.body.email, req.body.password);
+        sendTokenResponse(authData, 200, res);
+    } catch (error) {
+        res.status(401); // Unauthorized
+        throw new Error(error.message);
     }
 };
 
@@ -86,25 +63,8 @@ const getMe = async (req, res) => {
 // @route   POST /api/auth/refresh
 // @access  Public (Cookie based)
 const refreshToken = async (req, res) => {
-    const refreshToken = req.cookies.refreshToken;
-
-    if (!refreshToken) {
-        res.status(401);
-        throw new Error('Not authorized, no refresh token');
-    }
-
     try {
-        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-
-        // Check if user still exists
-        const user = await User.findById(decoded.id);
-        if (!user) {
-            res.status(401);
-            throw new Error('User not found');
-        }
-
-        // Generate new access token ONLY
-        const accessToken = generateAccessToken(user._id);
+        const { accessToken } = await authService.refreshAccessToken(req.cookies.refreshToken);
 
         res.json({
             success: true,
@@ -112,7 +72,7 @@ const refreshToken = async (req, res) => {
         });
     } catch (error) {
         res.status(401);
-        throw new Error('Not authorized, token failed');
+        throw new Error(error.message);
     }
 };
 

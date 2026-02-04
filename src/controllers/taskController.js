@@ -1,64 +1,27 @@
-const Task = require('../models/Task');
-const mongoose = require('mongoose');
+const taskService = require('../services/taskService');
 
 // @desc    Get all tasks for a project
 // @route   GET /api/projects/:projectId/tasks
 // @access  Private
 const getTasks = async (req, res) => {
-    try {
-        // 1. Get page and limit from query strings, set defaults
-        const page = parseInt(req.query.page, 10) || 1;
-        const limit = parseInt(req.query.limit, 10) || 10;
-        const skip = (page - 1) * limit;
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
 
-        // 2. Run query with pagination
-        const tasks = await Task.find({
-            project: req.params.projectId,
-            $or: [
-                { assignedTo: req.user.id },
-                { createdBy: req.user.id }
-            ]
-        })
-        .skip(skip)
-        .limit(limit)
-        .sort({ createdAt: -1 }); // Show newest tasks first
+    const result = await taskService.getTasks(req.user.id, req.params.projectId, { page, limit });
 
-        // 3. Get total count for the frontend to calculate total pages
-        const total = await Task.countDocuments({
-            project: req.params.projectId,
-            $or: [
-                { assignedTo: req.user.id },
-                { createdBy: req.user.id }
-            ]
-        });
-
-        res.status(200).json({
-            success: true,
-            count: tasks.length,
-            pagination: {
-                total,
-                page,
-                pages: Math.ceil(total / limit)
-            },
-            data: tasks
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
+    res.status(200).json({
+        success: true,
+        count: result.tasks.length,
+        pagination: result.pagination,
+        data: result.tasks
+    });
 };
 
 // @desc    Get single task
 // @route   GET /api/projects/:projectId/tasks/:id
 // @access  Private
 const getTask = async (req, res) => {
-    const task = await Task.findOne({
-        _id: req.params.id,
-        project: req.params.projectId,
-        $or: [
-            { assignedTo: req.user.id },
-            { createdBy: req.user.id }
-        ]
-    });
+    const task = await taskService.getTask(req.user.id, req.params.projectId, req.params.id);
 
     if (!task) {
         res.status(404);
@@ -75,49 +38,11 @@ const getTask = async (req, res) => {
 // @route   GET /api/projects/:projectId/tasks/stats
 // @access  Private
 const getTaskStats = async (req, res) => {
-    // Optimized Pipeline with $facet
-    const stats = await Task.aggregate([
-        {
-            $match: {
-                project: new mongoose.Types.ObjectId(req.params.projectId),
-                $or: [
-                    { assignedTo: new mongoose.Types.ObjectId(req.user.id) },
-                    { createdBy: new mongoose.Types.ObjectId(req.user.id) }
-                ]
-            }
-        },
-        {
-            $facet: {
-                // Group by status
-                byStatus: [
-                    {
-                        $group: {
-                            _id: '$status',
-                            count: { $sum: 1 }
-                        }
-                    }
-                ],
-                // Total count
-                totalCount: [
-                    { $count: 'total' }
-                ]
-            }
-        }
-    ]);
-
-    const result = stats[0];
-    const totalTasks = result.totalCount[0] ? result.totalCount[0].total : 0;
-    const formattedStats = result.byStatus.map(s => ({ status: s._id, count: s.count }));
+    const data = await taskService.getTaskStats(req.user.id, req.params.projectId);
 
     res.status(200).json({
         success: true,
-        data: {
-            stats: formattedStats,
-            summary: {
-                totalTasks,
-                lastUpdated: new Date()
-            }
-        }
+        data
     });
 };
 
@@ -125,11 +50,7 @@ const getTaskStats = async (req, res) => {
 // @route   POST /api/projects/:projectId/tasks
 // @access  Private
 const createTask = async (req, res) => {
-    const task = await Task.create({
-        ...req.body,
-        project: req.params.projectId,
-        createdBy: req.user.id
-    });
+    const task = await taskService.createTask(req.user.id, req.params.projectId, req.body);
 
     res.status(201).json({
         success: true,
@@ -141,25 +62,11 @@ const createTask = async (req, res) => {
 // @route   PUT /api/projects/:projectId/tasks/:id
 // @access  Private
 const updateTask = async (req, res) => {
-    // Explicitly select allowed fields to avoid unintended updates
+    // Explicitly select allowed fields
     const { title, description, status, priority, deadline, assignedTo, tags } = req.body;
     const updateData = { title, description, status, priority, deadline, assignedTo, tags };
 
-    const task = await Task.findOneAndUpdate(
-        {
-            _id: req.params.id,
-            project: req.params.projectId,
-            $or: [
-                { assignedTo: req.user.id },
-                { createdBy: req.user.id }
-            ]
-        },
-        updateData,
-        {
-            new: true,
-            runValidators: true
-        }
-    );
+    const task = await taskService.updateTask(req.user.id, req.params.projectId, req.params.id, updateData);
 
     if (!task) {
         res.status(404);
@@ -176,11 +83,7 @@ const updateTask = async (req, res) => {
 // @route   DELETE /api/projects/:projectId/tasks/:id
 // @access  Private
 const deleteTask = async (req, res) => {
-    const task = await Task.findOneAndDelete({
-        _id: req.params.id,
-        project: req.params.projectId,
-        createdBy: req.user.id // Only creator can delete? Or logic as before
-    });
+    const task = await taskService.deleteTask(req.user.id, req.params.projectId, req.params.id);
 
     if (!task) {
         res.status(404);
