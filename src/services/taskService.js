@@ -1,4 +1,5 @@
 const Task = require('../models/Task');
+const Project = require('../models/Project');
 const mongoose = require('mongoose');
 const { getClient } = require('../config/redis');
 
@@ -10,6 +11,19 @@ class TaskService {
      * @param {Object} taskData - The task data
      */
     async createTask(userId, projectId, taskData) {
+        // Validate Project Existence & Access
+        const project = await Project.findOne({
+            _id: projectId,
+            $or: [
+                { owner: userId },
+                { members: userId }
+            ]
+        });
+
+        if (!project) {
+            throw new Error('Project not found');
+        }
+
         const task = await Task.create({
             ...taskData,
             project: projectId,
@@ -200,13 +214,17 @@ class TaskService {
 
         const uniqueUsers = [...new Set(userIds.filter(id => id))];
 
-        for (const uid of uniqueUsers) {
+        const promises = uniqueUsers.map(uid => {
             const key = `stats:${projectId}:${uid.toString()}`;
-            try {
-                await redisClient.del(key);
-            } catch (err) {
+            return redisClient.del(key).catch(err => {
                 console.error('Redis Del Error:', err);
-            }
+            });
+        });
+
+        try {
+            await Promise.all(promises);
+        } catch (err) {
+            console.error('Redis Invalidation Error:', err);
         }
     }
 }
