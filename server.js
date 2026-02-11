@@ -3,7 +3,9 @@
  * Architecture: Express.js with MongoDB & Redis
  */
 
+require('./instrument.js');
 const express = require('express');
+const Sentry = require('@sentry/node');
 const dotenv = require('dotenv');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
@@ -90,10 +92,13 @@ app.use((req, res, next) => {
     next(new Error(`Route Not Found - ${req.originalUrl}`));
 });
 
-// 10. Global Error Middleware (Must be last)
+//10. Sentry Error Handler
+Sentry.setupExpressErrorHandler(app);
+
+// 11. Global Error Middleware (Must be last)
 app.use(errorHandler);
 
-// 11. Server Initialization
+// 12. Server Initialization
 const PORT = process.env.PORT || 5000;
 
 let server;
@@ -105,7 +110,7 @@ if (process.env.NODE_ENV !== 'test') {
 
 module.exports = { app, server };
 
-// 12. Graceful Shutdown & Error Handling
+// 13. Graceful Shutdown & Error Handling
 // Handle unhandled promise rejections (e.g. DB connection issues)
 process.on('unhandledRejection', (err) => {
     logger.error('UNHANDLED REJECTION! 💥 Shutting down...', err);
