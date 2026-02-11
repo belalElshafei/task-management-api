@@ -23,9 +23,11 @@ const swaggerSpec = require('./src/config/swagger');
 dotenv.config();
 const app = express();
 
-// 2. Database Connections
-connectDB();
-connectRedis();
+// 2. Database & Service Connections
+if (process.env.NODE_ENV !== 'test') {
+    connectDB();
+    connectRedis();
+}
 
 // 3. Global Security & Parsing Middleware
 app.use(helmet()); // Sets various HTTP headers for security
@@ -93,17 +95,27 @@ app.use(errorHandler);
 
 // 11. Server Initialization
 const PORT = process.env.PORT || 5000;
-const server = app.listen(PORT, () => {
-    logger.info(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-});
+
+let server;
+if (process.env.NODE_ENV !== 'test') {
+    server = app.listen(PORT, () => {
+        logger.info(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+    });
+}
+
+module.exports = { app, server };
 
 // 12. Graceful Shutdown & Error Handling
 // Handle unhandled promise rejections (e.g. DB connection issues)
 process.on('unhandledRejection', (err) => {
     logger.error('UNHANDLED REJECTION! 💥 Shutting down...', err);
-    server.close(() => {
+    if (server) {
+        server.close(() => {
+            process.exit(1);
+        });
+    } else {
         process.exit(1);
-    });
+    }
 });
 
 // Handle uncaught exceptions (e.g. a variable that doesn't exist)

@@ -22,6 +22,11 @@ const errorHandler = (err, req, res, next) => {
         statusCode = 400;
     }
 
+    // Manual Not Found Errors
+    if (message === 'Project not found' || message === 'Task not found') {
+        statusCode = 404;
+    }
+
     res.status(statusCode).json({
         success: false,
         message,
