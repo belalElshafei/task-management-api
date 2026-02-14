@@ -1,4 +1,5 @@
 const Project = require('../models/Project');
+const Task = require('../models/Task');
 const { getClient } = require('../config/redis');
 
 class ProjectService {
@@ -58,9 +59,13 @@ class ProjectService {
      * @param {Object} projectData
      */
     async createProject(userId, projectData) {
+        // DATA CONSISTENCY: Owner must represent in members list
+        const initialMembers = [...new Set([...(projectData.members || []), userId])];
+
         const project = await Project.create({
             ...projectData,
-            owner: userId
+            owner: userId,
+            members: initialMembers
         });
 
         await this._invalidateCache(userId);
@@ -104,6 +109,9 @@ class ProjectService {
         });
 
         if (project) {
+            // CASCADING DELETE: Remove all tasks associated with this project
+            await Task.deleteMany({ project: projectId });
+
             await this._invalidateCache(userId);
         }
         return project;

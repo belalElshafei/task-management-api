@@ -24,13 +24,30 @@ class TaskService {
             throw new Error('Project not found');
         }
 
+        let assignees = [];
+        if (taskData.assignedTo) {
+            assignees = Array.isArray(taskData.assignedTo) ? taskData.assignedTo : [taskData.assignedTo];
+        }
+
         const task = await Task.create({
             ...taskData,
             project: projectId,
-            createdBy: userId
+            createdBy: userId,
+            assignedTo: assignees
         });
 
-        await this._invalidateCache(projectId, [userId, task.assignedTo]);
+        // DATA CONSISTENCY: Auto-add assignees to project members
+        if (assignees.length > 0) {
+            const newMembers = assignees.filter(id => !project.members.includes(id));
+
+            if (newMembers.length > 0) {
+                await Project.findByIdAndUpdate(projectId, {
+                    $addToSet: { members: { $each: newMembers } }
+                });
+            }
+        }
+
+        await this._invalidateCache(projectId, [userId, ...assignees]);
 
         return task;
     }
@@ -95,8 +112,11 @@ class TaskService {
      * @param {Object} updateData 
      */
     async updateTask(userId, projectId, taskId, updateData) {
-        // Filter out undefined fields is handled by the controller's extraction
-        // But for safety, we rely on what's passed in updateData
+
+        if (updateData.assignedTo && !Array.isArray(updateData.assignedTo)) {
+            updateData.assignedTo = [updateData.assignedTo];
+        }
+
         const task = await Task.findOneAndUpdate(
             {
                 _id: taskId,
@@ -111,7 +131,15 @@ class TaskService {
         );
 
         if (task) {
-            await this._invalidateCache(projectId, [userId, task.assignedTo, task.createdBy]);
+            // DATA CONSISTENCY: Auto-add new assignees to project members
+            if (task.assignedTo && task.assignedTo.length > 0) {
+                await Project.findByIdAndUpdate(projectId, {
+                    $addToSet: { members: { $each: task.assignedTo } }
+                });
+            }
+
+            const assignees = task.assignedTo || [];
+            await this._invalidateCache(projectId, [userId, ...assignees, task.createdBy]);
         }
 
         return task;
@@ -131,7 +159,8 @@ class TaskService {
         });
 
         if (task) {
-            await this._invalidateCache(projectId, [userId, task.assignedTo, task.createdBy]);
+            const assignees = task.assignedTo || [];
+            await this._invalidateCache(projectId, [userId, ...assignees, task.createdBy]);
         }
 
         return task;

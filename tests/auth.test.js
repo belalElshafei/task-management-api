@@ -1,7 +1,5 @@
-const request = require('supertest');
-const express = require('express');
 const mongoose = require('mongoose');
-const User = require('../src/models/User');
+const jwt = require('jsonwebtoken');
 const { generateAccessToken } = require('../src/utils/tokenGenerator');
 
 // Set env vars for test
@@ -14,7 +12,6 @@ describe('Auth Utilities', () => {
         const token = generateAccessToken(userId);
         expect(token).toBeDefined();
         // Decode
-        const jwt = require('jsonwebtoken');
         const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
         expect(decoded.id).toBe(userId.toString());
     });

@@ -1,4 +1,5 @@
 const { body, validationResult } = require('express-validator');
+const mongoose = require('mongoose');
 
 // Middleware to check for validation errors
 const validateRequest = (req, res, next) => {
@@ -22,9 +23,6 @@ const createProjectValidator = [
 const updateProjectValidator = [
     body('name').optional().trim().notEmpty().withMessage('Name cannot be empty'),
     body('description').optional().trim().notEmpty().withMessage('Description cannot be empty'),
-    // Prevent strictly sensitive fields from being updated via validators is tricky without extra logic,
-    // but we can sanitize the body or just ignore them in the controller.
-    // However, the best practice is to validate what IS allowed.
     validateRequest
 ];
 
@@ -34,6 +32,20 @@ const createTaskValidator = [
     body('description').notEmpty().withMessage('Please add a description'),
     body('priority').optional().isIn(['low', 'medium', 'high']).withMessage('Priority must be low, medium, or high'),
     body('status').optional().isIn(['todo', 'in-progress', 'completed']).withMessage('Status must be todo, in-progress, or completed'),
+    body('assignedTo').optional().custom((value) => {
+        if (Array.isArray(value)) {
+            const allValid = value.every(id => mongoose.Types.ObjectId.isValid(id));
+            if (!allValid) throw new Error('All IDs in assignedTo must be valid User IDs');
+            return true;
+        }
+        if (typeof value === 'string') {
+            if (!mongoose.Types.ObjectId.isValid(value)) {
+                throw new Error('assignedTo must be a valid User ID');
+            }
+            return true;
+        }
+        throw new Error('assignedTo must be a User ID or an array of User IDs');
+    }),
     validateRequest
 ];
 
@@ -41,6 +53,20 @@ const updateTaskValidator = [
     body('title').optional().trim().notEmpty().withMessage('Title cannot be empty'),
     body('priority').optional().isIn(['low', 'medium', 'high']),
     body('status').optional().isIn(['todo', 'in-progress', 'completed']),
+    body('assignedTo').optional().custom((value) => {
+        if (Array.isArray(value)) {
+            const allValid = value.every(id => mongoose.Types.ObjectId.isValid(id));
+            if (!allValid) throw new Error('All IDs in assignedTo must be valid User IDs');
+            return true;
+        }
+        if (typeof value === 'string') {
+            if (!mongoose.Types.ObjectId.isValid(value)) {
+                throw new Error('assignedTo must be a valid User ID');
+            }
+            return true;
+        }
+        throw new Error('assignedTo must be a User ID or an array of User IDs');
+    }),
     validateRequest
 ];
 

@@ -2,6 +2,7 @@ const request = require('supertest');
 const mongoose = require('mongoose');
 const { app } = require('../server');
 const { execSync } = require('child_process');
+const { connectRedis, getClient } = require('../src/config/redis');
 
 jest.setTimeout(30000); // Reset to 30s as Docker should be fast
 
@@ -43,7 +44,6 @@ describe('API Integration Test Suite', () => {
         console.log('--- CONNECTED TO DOCKER TEST DB ---');
 
         // 3. Connect Redis
-        const { connectRedis, getClient } = require('../src/config/redis');
         process.env.REDIS_URL = 'redis://localhost:6380';
         await connectRedis();
         const client = getClient();
@@ -81,7 +81,6 @@ describe('API Integration Test Suite', () => {
         console.log('--- TEST TEARDOWN START ---');
         await mongoose.disconnect();
 
-        const { getClient } = require('../src/config/redis');
         const redisClient = getClient();
         if (redisClient && redisClient.isOpen) await redisClient.quit();
 
@@ -149,17 +148,64 @@ describe('API Integration Test Suite', () => {
     });
 
     describe('Task Endpoints', () => {
-        it('POST /api/projects/:pid/tasks - should create a task', async () => {
+        it('POST /api/projects/:pid/tasks - should create a task and auto-add assignee to project members', async () => {
+            // Create a new user to assign task to
+            const assigneeRes = await request(app)
+                .post('/api/auth/register')
+                .send({
+                    name: 'Task Assignee',
+                    email: `assignee_${Date.now()}@example.com`,
+                    password: 'password123'
+                });
+            const assigneeId = assigneeRes.body.data._id;
+
             const res = await request(app)
                 .post(`/api/projects/${projectId}/tasks`)
                 .set('Authorization', `Bearer ${token}`)
                 .send({
                     title: 'Test Task',
-                    description: 'Task description'
+                    description: 'Task description',
+                    assignedTo: [assigneeId]
                 });
 
             expect(res.statusCode).toBe(201);
+            expect(res.body.data.assignedTo).toContain(assigneeId);
             taskId = res.body.data._id;
+
+            // VERIFY AUTO-MEMBERSHIP
+            const projectRes = await request(app)
+                .get(`/api/projects/${projectId}`)
+                .set('Authorization', `Bearer ${token}`);
+
+            // The members array should now contain the assigneeId
+            const members = projectRes.body.data.members.map(m => m._id);
+            expect(members).toContain(assigneeId);
+        });
+
+        it('POST /api/projects/:pid/tasks - should create a task with single string assignee (Flexible Validation)', async () => {
+            // Create another user
+            const userRes = await request(app)
+                .post('/api/auth/register')
+                .send({
+                    name: 'Single Assignee',
+                    email: `single_${Date.now()}@example.com`,
+                    password: 'password123'
+                });
+            const singleUserId = userRes.body.data._id;
+
+            const res = await request(app)
+                .post(`/api/projects/${projectId}/tasks`)
+                .set('Authorization', `Bearer ${token}`)
+                .send({
+                    title: 'Flexible Task',
+                    description: 'Testing string assignment',
+                    assignedTo: singleUserId // Send as STRING, not array
+                });
+
+            expect(res.statusCode).toBe(201);
+            // Service should have converted it to array internally
+            expect(Array.isArray(res.body.data.assignedTo)).toBe(true);
+            expect(res.body.data.assignedTo).toContain(singleUserId);
         });
 
         it('GET /api/projects/:pid/tasks - should list tasks', async () => {
@@ -205,18 +251,26 @@ describe('API Integration Test Suite', () => {
             expect(check.body.data.some(t => t._id === taskId)).toBe(false);
         });
 
-        it('DELETE /api/projects/:id - should delete project', async () => {
+        it('DELETE /api/projects/:id - should delete project and cascade delete tasks', async () => {
             const res = await request(app)
                 .delete(`/api/projects/${projectId}`)
                 .set('Authorization', `Bearer ${token}`);
 
             expect(res.statusCode).toBe(200);
 
-            // Verify 404
-            const check = await request(app)
+            // Verify Project deletion
+            const checkProject = await request(app)
                 .get(`/api/projects/${projectId}`)
                 .set('Authorization', `Bearer ${token}`);
-            expect(check.statusCode).toBe(404);
+            expect(checkProject.statusCode).toBe(404);
+
+            // Verify Cascading Task deletion
+            const checkTask = await request(app)
+                .get(`/api/projects/${projectId}/tasks/${taskId}`)
+                .set('Authorization', `Bearer ${token}`);
+
+            // Should return 404 because task is gone
+            expect(checkTask.statusCode).toBe(404);
         });
     });
 
