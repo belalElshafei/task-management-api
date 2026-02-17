@@ -102,6 +102,68 @@ describe('API Integration Test Suite', () => {
         });
     });
 
+    describe('Auth Endpoints', () => {
+        const testUser = {
+            name: 'Auth Tester',
+            email: `auth_${Date.now()}@example.com`,
+            password: 'password123'
+        };
+
+        it('POST /api/auth/register - should register a new user and ignore extra fields', async () => {
+            const res = await request(app)
+                .post('/api/auth/register')
+                .send({
+                    ...testUser,
+                    role: 'admin', // EXTRA FIELD: Should be ignored by matchedData
+                    malicious: true
+                });
+
+            expect(res.statusCode).toBe(201);
+            expect(res.body.success).toBe(true);
+            expect(res.body.data.email).toBe(testUser.email);
+            expect(res.body.data.role).toBe('user'); // Verify matchedData worked (role: 'admin' was ignored, so default 'user' was used)
+        });
+
+        it('POST /api/auth/register - should fail with invalid data', async () => {
+            const res = await request(app)
+                .post('/api/auth/register')
+                .send({
+                    name: '',
+                    email: 'invalid-email',
+                    password: '123'
+                });
+
+            expect(res.statusCode).toBe(400);
+            expect(res.body.success).toBe(false);
+        });
+
+        it('POST /api/auth/login - should login successfully with valid credentials', async () => {
+            const res = await request(app)
+                .post('/api/auth/login')
+                .send({
+                    email: testUser.email,
+                    password: testUser.password,
+                    extra: 'junk' // EXTRA FIELD: Should be ignored
+                });
+
+            expect(res.statusCode).toBe(200);
+            expect(res.body.success).toBe(true);
+            expect(res.body.data.accessToken).toBeDefined();
+        });
+
+        it('POST /api/auth/login - should fail with wrong credentials', async () => {
+            const res = await request(app)
+                .post('/api/auth/login')
+                .send({
+                    email: testUser.email,
+                    password: 'wrongpassword'
+                });
+
+            expect(res.statusCode).toBe(401);
+            expect(res.body.success).toBe(false);
+        });
+    });
+
     describe('Project Endpoints', () => {
         it('POST /api/projects - should create a project', async () => {
             const res = await request(app)
@@ -182,7 +244,7 @@ describe('API Integration Test Suite', () => {
             expect(members).toContain(assigneeId);
         });
 
-        it('POST /api/projects/:pid/tasks - should create a task with single string assignee (Flexible Validation)', async () => {
+        it('POST /api/projects/:pid/tasks - should FAIL if assignedTo is a string (Strict Validation)', async () => {
             // Create another user
             const userRes = await request(app)
                 .post('/api/auth/register')
@@ -197,15 +259,14 @@ describe('API Integration Test Suite', () => {
                 .post(`/api/projects/${projectId}/tasks`)
                 .set('Authorization', `Bearer ${token}`)
                 .send({
-                    title: 'Flexible Task',
-                    description: 'Testing string assignment',
-                    assignedTo: singleUserId // Send as STRING, not array
+                    title: 'Strict Task',
+                    description: 'Testing string assignment rejection',
+                    assignedTo: singleUserId
                 });
 
-            expect(res.statusCode).toBe(201);
-            // Service should have converted it to array internally
-            expect(Array.isArray(res.body.data.assignedTo)).toBe(true);
-            expect(res.body.data.assignedTo).toContain(singleUserId);
+            expect(res.statusCode).toBe(400);
+            expect(res.body.success).toBe(false);
+            expect(res.body.errors[0].msg).toBe('assignedTo must be an array of User IDs');
         });
 
         it('GET /api/projects/:pid/tasks - should list tasks', async () => {

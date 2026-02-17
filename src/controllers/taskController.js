@@ -1,3 +1,4 @@
+const { matchedData } = require('express-validator');
 const taskService = require('../services/taskService');
 
 // @desc    Get all tasks for a project
@@ -50,7 +51,8 @@ const getTaskStats = async (req, res) => {
 // @route   POST /api/projects/:projectId/tasks
 // @access  Private
 const createTask = async (req, res) => {
-    const task = await taskService.createTask(req.user.id, req.params.projectId, req.body);
+    const taskData = matchedData(req, { locations: ['body'] });
+    const task = await taskService.createTask(req.user.id, req.params.projectId, taskData);
 
     res.status(201).json({
         success: true,
@@ -62,9 +64,14 @@ const createTask = async (req, res) => {
 // @route   PUT /api/projects/:projectId/tasks/:id
 // @access  Private
 const updateTask = async (req, res) => {
-    // Explicitly select allowed fields
-    const { title, description, status, priority, deadline, assignedTo, tags } = req.body;
-    const updateData = { title, description, status, priority, deadline, assignedTo, tags };
+    const updateData = matchedData(req, { locations: ['body'] });
+
+    if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({
+            success: false,
+            message: 'Please provide fields to update'
+        });
+    }
 
     const task = await taskService.updateTask(req.user.id, req.params.projectId, req.params.id, updateData);
 

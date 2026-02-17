@@ -1,6 +1,9 @@
 const { body, validationResult } = require('express-validator');
 const mongoose = require('mongoose');
 
+// Helper to validate MongoDB ObjectIDs
+const isValidMongoId = (value) => mongoose.Types.ObjectId.isValid(value);
+
 // Middleware to check for validation errors
 const validateRequest = (req, res, next) => {
     const errors = validationResult(req);
@@ -17,12 +20,18 @@ const validateRequest = (req, res, next) => {
 const createProjectValidator = [
     body('name').trim().notEmpty().withMessage('Please add a project name'),
     body('description').trim().notEmpty().withMessage('Please add a description'),
+    body('status').optional().isIn(['active', 'completed', 'archived']).withMessage('Status must be active, completed, or archived'),
+    body('members').optional().isArray().withMessage('Members must be an array of User IDs'),
+    body('members.*').custom(isValidMongoId).withMessage('Invalid User ID in members'),
     validateRequest
 ];
 
 const updateProjectValidator = [
     body('name').optional().trim().notEmpty().withMessage('Name cannot be empty'),
     body('description').optional().trim().notEmpty().withMessage('Description cannot be empty'),
+    body('status').optional().isIn(['active', 'completed', 'archived']).withMessage('Status must be active, completed, or archived'),
+    body('members').optional().isArray().withMessage('Members must be an array of User IDs'),
+    body('members.*').custom(isValidMongoId).withMessage('Invalid User ID in members'),
     validateRequest
 ];
 
@@ -32,41 +41,24 @@ const createTaskValidator = [
     body('description').notEmpty().withMessage('Please add a description'),
     body('priority').optional().isIn(['low', 'medium', 'high']).withMessage('Priority must be low, medium, or high'),
     body('status').optional().isIn(['todo', 'in-progress', 'completed']).withMessage('Status must be todo, in-progress, or completed'),
-    body('assignedTo').optional().custom((value) => {
-        if (Array.isArray(value)) {
-            const allValid = value.every(id => mongoose.Types.ObjectId.isValid(id));
-            if (!allValid) throw new Error('All IDs in assignedTo must be valid User IDs');
-            return true;
-        }
-        if (typeof value === 'string') {
-            if (!mongoose.Types.ObjectId.isValid(value)) {
-                throw new Error('assignedTo must be a valid User ID');
-            }
-            return true;
-        }
-        throw new Error('assignedTo must be a User ID or an array of User IDs');
-    }),
+    body('assignedTo').optional().isArray().withMessage('assignedTo must be an array of User IDs'),
+    body('assignedTo.*').custom(isValidMongoId).withMessage('Invalid User ID in assignment list'),
+    body('deadline').optional().isISO8601().toDate().withMessage('Invalid deadline date'),
+    body('tags').optional().isArray().withMessage('Tags must be an array of strings'),
+    body('tags.*').optional().isString().trim().notEmpty(),
     validateRequest
 ];
 
 const updateTaskValidator = [
     body('title').optional().trim().notEmpty().withMessage('Title cannot be empty'),
+    body('description').optional().notEmpty().withMessage('Description cannot be empty'),
     body('priority').optional().isIn(['low', 'medium', 'high']),
     body('status').optional().isIn(['todo', 'in-progress', 'completed']),
-    body('assignedTo').optional().custom((value) => {
-        if (Array.isArray(value)) {
-            const allValid = value.every(id => mongoose.Types.ObjectId.isValid(id));
-            if (!allValid) throw new Error('All IDs in assignedTo must be valid User IDs');
-            return true;
-        }
-        if (typeof value === 'string') {
-            if (!mongoose.Types.ObjectId.isValid(value)) {
-                throw new Error('assignedTo must be a valid User ID');
-            }
-            return true;
-        }
-        throw new Error('assignedTo must be a User ID or an array of User IDs');
-    }),
+    body('assignedTo').optional().isArray().withMessage('assignedTo must be an array of User IDs'),
+    body('assignedTo.*').custom(isValidMongoId).withMessage('Invalid User ID in assignment list'),
+    body('deadline').optional().isISO8601().toDate().withMessage('Invalid deadline date'),
+    body('tags').optional().isArray().withMessage('Tags must be an array of strings'),
+    body('tags.*').optional().isString().trim().notEmpty(),
     validateRequest
 ];
 

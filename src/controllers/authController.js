@@ -1,3 +1,4 @@
+const { matchedData } = require('express-validator');
 const authService = require('../services/authService');
 
 // Helper to set cookie and send response
@@ -28,7 +29,8 @@ const sendTokenResponse = (authData, statusCode, res) => {
 // @access  Public
 const register = async (req, res) => {
     try {
-        const authData = await authService.registerUser(req.body);
+        const userData = matchedData(req, { locations: ['body'] });
+        const authData = await authService.registerUser(userData);
         sendTokenResponse(authData, 201, res);
     } catch (error) {
         res.status(400); // Bad Request for registration errors
@@ -41,7 +43,8 @@ const register = async (req, res) => {
 // @access  Public
 const login = async (req, res) => {
     try {
-        const authData = await authService.loginUser(req.body.email, req.body.password);
+        const credentials = matchedData(req, { locations: ['body'] });
+        const authData = await authService.loginUser(credentials.email, credentials.password);
         sendTokenResponse(authData, 200, res);
     } catch (error) {
         res.status(401); // Unauthorized

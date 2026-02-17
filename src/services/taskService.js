@@ -24,10 +24,7 @@ class TaskService {
             throw new Error('Project not found');
         }
 
-        let assignees = [];
-        if (taskData.assignedTo) {
-            assignees = Array.isArray(taskData.assignedTo) ? taskData.assignedTo : [taskData.assignedTo];
-        }
+        const assignees = taskData.assignedTo || [];
 
         const task = await Task.create({
             ...taskData,
@@ -113,9 +110,7 @@ class TaskService {
      */
     async updateTask(userId, projectId, taskId, updateData) {
 
-        if (updateData.assignedTo && !Array.isArray(updateData.assignedTo)) {
-            updateData.assignedTo = [updateData.assignedTo];
-        }
+
 
         const task = await Task.findOneAndUpdate(
             {

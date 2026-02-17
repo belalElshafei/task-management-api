@@ -1,3 +1,4 @@
+const { matchedData } = require('express-validator');
 const projectService = require('../services/projectService');
 
 // @desc    Get all projects for logged-in user
@@ -34,7 +35,8 @@ const getProject = async (req, res) => {
 // @route   POST /api/projects
 // @access  Private
 const createProject = async (req, res) => {
-    const project = await projectService.createProject(req.user._id, req.body);
+    const projectData = matchedData(req, { locations: ['body'] });
+    const project = await projectService.createProject(req.user._id, projectData);
 
     res.status(201).json({
         success: true,
@@ -46,13 +48,19 @@ const createProject = async (req, res) => {
 // @route   PUT /api/projects/:id
 // @access  Private
 const updateProject = async (req, res) => {
-    const { name, description, status, members } = req.body;
+    const updateData = matchedData(req, { locations: ['body'] });
 
-    // Explicitly pass only allowed fields
+    if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({
+            success: false,
+            message: 'Please provide fields to update'
+        });
+    }
+
     const project = await projectService.updateProject(
         req.user._id,
         req.params.id,
-        { name, description, status, members }
+        updateData
     );
 
     if (!project) {
