@@ -61,14 +61,21 @@ This will spin up the Node.js API, MongoDB, and Redis containers.
    ```
 
 3. **Configure Environment**
-   Create a `.env` file:
+   Create a `.env` file and use the values from `.env.example` as a template:
    ```env
    NODE_ENV=development
    PORT=5000
    MONGO_URI=mongodb://localhost:27017/task-mgmt
    REDIS_URL=redis://localhost:6379
-   JWT_SECRET=your_jwt_secret
    SENTRY_DSN=your_sentry_dsn
+   
+   # Access Token
+   JWT_ACCESS_SECRET=your_access_secret
+   JWT_ACCESS_EXPIRE=15m
+   
+   # Refresh Token
+   JWT_REFRESH_SECRET=your_refresh_secret
+   JWT_REFRESH_EXPIRE=7d
    ```
 
 4. **Run the Server**
@@ -90,6 +97,15 @@ The API follows OpenAPI 3.0.0 specifications and supports Bearer Token authentic
 | :--- | :--- | :--- |
 | `GET` | `/` | Service discovery & system info |
 | `GET` | `/health` | Liveness & Readiness probe |
+
+### Authentication
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/auth/register` | Register a new user |
+| `POST` | `/api/auth/login` | Login user & get tokens |
+| `POST` | `/api/auth/refresh` | Exchange refresh token for new access token |
+| `POST` | `/api/auth/logout` | Logout & clear refresh token cookie |
+| `GET` | `/api/auth/me` | Get current user's profile |
 
 ### Projects
 | Method | Endpoint | Description |
