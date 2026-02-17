@@ -8,36 +8,50 @@ A robust, production-ready RESTful API for managing projects and tasks, built wi
 
 ## ✨ Key Features
 
-- **🛡️ Advanced Security**: Implements `Helmet` for secure headers, `CORS` policies, and `Rate Limiting` to prevent brute-force attacks.
+- **🛡️ Advanced Security**: Implements `Helmet` for secure headers, `CORS` policies, and `Rate Limiting`.
 - **🔐 Authentication**: Secure JWT-based authentication with role-based access control (RBAC).
-- **⚡ High Performance**:
-    - **Database Indexes**: Optimized MongoDB queries using compound indexes in Mongoose models.
-    - **Aggregation Pipelines**: Efficient data analysis using native MongoDB aggregation frameworks (e.g., `$facet`).
-- **📐 Clean Architecture**:
-    - **Nested Routes**: RESTful relationship handling (e.g., `/projects/:projectId/tasks`).
-    - **Validation Layer**: Robust input sanitization using `express-validator`.
-    - **Error Handling**: Centralized, asynchronous error handling using Express 5 standards.
+- **⚡ Performance & Scalability**:
+    - **Caching**: Integrated with **Redis** for optimized data retrieval.
+    - **Database Indexes**: Optimized MongoDB queries using compound indexes.
+- **🛠️ DevOps & Monitoring**:
+    - **Dockerized**: Containerized with Docker and Docker Compose for easy deployment.
+    - **Error Tracking**: Full integration with **Sentry** for real-time error monitoring.
+    - **Logging**: Structured logging using **Winston** and request logging with **Morgan**.
+- **📖 API Documentation**: Auto-generated interactive documentation using **Swagger UI**.
 
 ## 🛠️ Tech Stack
 
-- **Runtime**: Node.js
+- **Runtime**: Node.js (v20 Alpine)
 - **Framework**: Express.js (v5)
 - **Database**: MongoDB (Mongoose ORM)
-- **Validation**: express-validator
+- **Caching**: Redis
+- **Monitoring**: Sentry
+- **Documentation**: Swagger UI
 - **Security**: Helmet, CORS, Express Rate Limit, Bcrypt, JWT
+- **DevOps**: Docker, Docker Compose, GitHub Actions (CI)
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-- Node.js (v14 or higher)
-- MongoDB (Local or Atlas connection string)
+- Node.js (v18+)
+- MongoDB
+- Redis (Optional for local dev)
+- Docker (Recommended)
 
-### Installation
+### Installation & Setup
 
+#### 🐳 Using Docker (Recommended)
+The easiest way to get started is using Docker Compose:
+```bash
+docker-compose up --build
+```
+This will spin up the Node.js API, MongoDB, and Redis containers.
+
+#### 💻 Local Development
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/task-management-api.git
+   git clone https://github.com/belalElshafei/task-management-api.git
    cd task-management-api
    ```
 
@@ -47,61 +61,66 @@ A robust, production-ready RESTful API for managing projects and tasks, built wi
    ```
 
 3. **Configure Environment**
-   Create a `.env` file in the root directory:
+   Create a `.env` file:
    ```env
    NODE_ENV=development
    PORT=5000
-   MONGO_URI=your_mongodb_connection_string
-   JWT_SECRET=your_jwt_secret_key
+   MONGO_URI=mongodb://localhost:27017/task-mgmt
+   REDIS_URL=redis://localhost:6379
+   JWT_SECRET=your_jwt_secret
+   SENTRY_DSN=your_sentry_dsn
    ```
 
 4. **Run the Server**
    ```bash
-   # Development mode
    npm run dev
-
-   # Production start
-   npm start
    ```
 
-## 📚 API Endpoints
+## 📖 API Documentation
+
+Interactive API documentation is available at:
+👉 **`http://localhost:5000/api-docs`**
+
+The API follows OpenAPI 3.0.0 specifications and supports Bearer Token authentication.
+
+## 📚 Core Endpoints
+
+### System & Health
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/` | Service discovery & system info |
+| `GET` | `/health` | Liveness & Readiness probe |
 
 ### Projects
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | `/api/projects` | Get all projects for logged-in user |
+| `GET` | `/api/projects` | Get all projects |
 | `POST` | `/api/projects` | Create a new project |
-| `GET` | `/api/projects/:id` | Get single project details |
-| `PUT` | `/api/projects/:id` | Update a project |
-| `DELETE` | `/api/projects/:id` | Delete a project |
+| `GET` | `/api/projects/:id` | Get single project |
 
 ### Tasks
 *(Nested under projects)*
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | `/api/projects/:projectId/tasks` | Get all tasks for a specific project |
+| `GET` | `/api/projects/:projectId/tasks` | Get all tasks for a project |
 | `POST` | `/api/projects/:projectId/tasks` | Create a task in a project |
 | `GET` | `/api/projects/:projectId/tasks/stats` | **Get task statistics (Aggregation)** |
-| `PUT` | `/api/projects/:projectId/tasks/:id` | Update a task |
-| `DELETE` | `/api/projects/:projectId/tasks/:id` | Delete a task |
 
 ## 🧪 Code Structure
 
 ```
-src/
-├── config/         # Database configuration
-├── controllers/    # Route logic (No try/catch boilerplate!)
-├── middleware/     # Auth, Validation, Error Handling
-├── models/         # Mongoose Schemas & Indexes
-├── routes/         # API Routes & Nested Routing
-└── utils/          # Helper functions
+.
+├── src/
+│   ├── config/         # Database, Redis, Swagger configs
+│   ├── controllers/    # Route logic
+│   ├── middleware/     # Auth, Validation, Error Handling
+│   ├── models/         # Mongoose Schemas & Indexes
+│   ├── routes/         # API Routes
+│   └── utils/          # Logger & Helpers
+├── tests/              # Jest Integration Tests
+├── Dockerfile          # Container config
+└── docker-compose.yml  # Orchestration
 ```
 
-## 🔒 Security Measures
-
-- **IDOR Protection**: All resource access is scoped to the authenticated user (`createdBy` or `assignedTo` checks).
-- **Input Validation**: Strict validation middleware prevents malformed data injection.
-- **Production Ready**: Configured for performance and security best practices.
-
 ---
-*Created for Portfolio Showcase*
+*Developed by belalElshafei*
