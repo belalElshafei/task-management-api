@@ -20,11 +20,6 @@ const getProjects = async (req, res) => {
 const getProject = async (req, res) => {
     const project = await projectService.getProject(req.user._id, req.params.id);
 
-    if (!project) {
-        res.status(404);
-        throw new Error('Project not found');
-    }
-
     res.status(200).json({
         success: true,
         data: project
@@ -63,11 +58,6 @@ const updateProject = async (req, res) => {
         updateData
     );
 
-    if (!project) {
-        res.status(404);
-        throw new Error('Project not found');
-    }
-
     res.status(200).json({
         success: true,
         data: project
@@ -78,12 +68,7 @@ const updateProject = async (req, res) => {
 // @route   DELETE /api/projects/:id
 // @access  Private
 const deleteProject = async (req, res) => {
-    const project = await projectService.deleteProject(req.user._id, req.params.id);
-
-    if (!project) {
-        res.status(404);
-        throw new Error('Project not found');
-    }
+    await projectService.deleteProject(req.user._id, req.params.id);
 
     res.status(200).json({
         success: true,

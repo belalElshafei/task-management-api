@@ -1,6 +1,6 @@
 # Task Management API 🚀
 
-A robust, production-ready RESTful API for managing projects and tasks, built with **Node.js**, **Express**, and **MongoDB**. Designed with scalability, security, and performance in mind.
+A robust, RESTful API for managing projects and tasks, built with **Node.js**, **Express**, and **MongoDB**. Designed with scalability, security, and performance in mind.
 
 ![License](https://img.shields.io/badge/license-ISC-blue.svg)
 ![Node](https://img.shields.io/badge/node-v14+-green.svg)

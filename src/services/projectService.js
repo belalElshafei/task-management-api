@@ -23,9 +23,9 @@ class ProjectService {
             }
         }
 
-        // 2. DB Query
+        // 2. DB Query: Member check covers owners too
         const projects = await Project.find({
-            owner: userId
+            members: userId
         }).populate('owner', 'name email');
 
         // 3. Set Cache
@@ -46,11 +46,20 @@ class ProjectService {
      * @param {string} projectId
      */
     async getProject(userId, projectId) {
-        return await Project.findOne({
-            _id: projectId,
-            owner: userId
-        }).populate('owner', 'name email')
+        const project = await Project.findById(projectId)
+            .populate('owner', 'name email')
             .populate('members', 'name email');
+
+        if (!project) {
+            throw new Error('Project not found');
+        }
+
+        const isMember = project.members.some(m => m._id.toString() === userId.toString());
+        if (!isMember) {
+            throw new Error('Not authorized: Project membership required');
+        }
+
+        return project;
     }
 
     /**
@@ -59,7 +68,6 @@ class ProjectService {
      * @param {Object} projectData
      */
     async createProject(userId, projectData) {
-        // DATA CONSISTENCY: Owner must represent in members list
         const initialMembers = [...new Set([...(projectData.members || []), userId])];
 
         const project = await Project.create({
@@ -68,7 +76,7 @@ class ProjectService {
             members: initialMembers
         });
 
-        await this._invalidateCache(userId);
+        await this._invalidateCache(project.members);
         return project;
     }
 
@@ -79,11 +87,18 @@ class ProjectService {
      * @param {Object} updateData
      */
     async updateProject(userId, projectId, updateData) {
-        const project = await Project.findOneAndUpdate(
-            {
-                _id: projectId,
-                owner: userId
-            },
+        const project = await Project.findById(projectId);
+
+        if (!project) {
+            throw new Error('Project not found');
+        }
+
+        if (project.owner.toString() !== userId.toString()) {
+            throw new Error('Not authorized: Owner access required');
+        }
+
+        const updatedProject = await Project.findByIdAndUpdate(
+            projectId,
             updateData,
             {
                 new: true,
@@ -91,10 +106,8 @@ class ProjectService {
             }
         );
 
-        if (project) {
-            await this._invalidateCache(userId);
-        }
-        return project;
+        await this._invalidateCache(updatedProject.members);
+        return updatedProject;
     }
 
     /**
@@ -103,33 +116,43 @@ class ProjectService {
      * @param {string} projectId
      */
     async deleteProject(userId, projectId) {
-        const project = await Project.findOneAndDelete({
-            _id: projectId,
-            owner: userId
-        });
+        const project = await Project.findById(projectId);
 
-        if (project) {
-            // CASCADING DELETE: Remove all tasks associated with this project
-            await Task.deleteMany({ project: projectId });
-
-            await this._invalidateCache(userId);
+        if (!project) {
+            throw new Error('Project not found');
         }
+
+        if (project.owner.toString() !== userId.toString()) {
+            throw new Error('Not authorized: Owner access required');
+        }
+
+        await Project.findByIdAndDelete(projectId);
+
+        // CASCADING DELETE: Remove all tasks associated with this project
+        await Task.deleteMany({ project: projectId });
+
+        await this._invalidateCache(project.members);
+
         return project;
     }
 
     /**
-     * Helper to invalidate user projects cache
-     * @param {string} userId
+     * Helper to invalidate user projects cache for multiple users
+     * @param {string[]} userIds
      */
-    async _invalidateCache(userId) {
+    async _invalidateCache(userIds) {
         const redisClient = getClient();
-        if (redisClient && redisClient.isOpen) {
-            try {
-                await redisClient.del(`projects:${userId}`);
-            } catch (err) {
+        if (!redisClient || !redisClient.isOpen) return;
+
+        const uniqueUsers = [...new Set(userIds.map(id => id.toString()))];
+
+        const promises = uniqueUsers.map(uid => {
+            return redisClient.del(`projects:${uid}`).catch(err => {
                 console.error('Redis Del Error:', err);
-            }
-        }
+            });
+        });
+
+        await Promise.all(promises);
     }
 }
 

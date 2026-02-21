@@ -24,7 +24,6 @@ describe('Refresh Token Controller Scenario', () => {
 
     it('should return 401 if no refresh token is present', async () => {
         await expect(refreshToken(req, res)).rejects.toThrow('Not authorized, no refresh token');
-        expect(res.status).toHaveBeenCalledWith(401);
     });
 
     it('should return 401 if refresh token is invalid', async () => {
@@ -32,7 +31,6 @@ describe('Refresh Token Controller Scenario', () => {
         jwt.verify.mockImplementation(() => { throw new Error('jwt malformed'); });
 
         await expect(refreshToken(req, res)).rejects.toThrow('Not authorized, token failed');
-        expect(res.status).toHaveBeenCalledWith(401);
     });
 
     it('should return new access token if refresh token is valid', async () => {

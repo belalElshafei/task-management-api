@@ -28,35 +28,25 @@ const sendTokenResponse = (authData, statusCode, res) => {
 // @route   POST /api/auth/register
 // @access  Public
 const register = async (req, res) => {
-    try {
-        const userData = matchedData(req, { locations: ['body'] });
-        const authData = await authService.registerUser(userData);
-        sendTokenResponse(authData, 201, res);
-    } catch (error) {
-        res.status(400); // Bad Request for registration errors
-        throw new Error(error.message);
-    }
+    const userData = matchedData(req, { locations: ['body'] });
+    const authData = await authService.registerUser(userData);
+    sendTokenResponse(authData, 201, res);
 };
 
 // @desc    Login user
 // @route   POST /api/auth/login
 // @access  Public
 const login = async (req, res) => {
-    try {
-        const credentials = matchedData(req, { locations: ['body'] });
-        const authData = await authService.loginUser(credentials.email, credentials.password);
-        sendTokenResponse(authData, 200, res);
-    } catch (error) {
-        res.status(401); // Unauthorized
-        throw new Error(error.message);
-    }
+    const credentials = matchedData(req, { locations: ['body'] });
+    const authData = await authService.loginUser(credentials.email, credentials.password);
+    sendTokenResponse(authData, 200, res);
 };
 
 // @desc    Get current user
 // @route   GET /api/auth/me
 // @access  Private
 const getMe = async (req, res) => {
-    res.json({
+    res.status(200).json({
         success: true,
         data: req.user
     });
@@ -66,17 +56,12 @@ const getMe = async (req, res) => {
 // @route   POST /api/auth/refresh
 // @access  Public (Cookie based)
 const refreshToken = async (req, res) => {
-    try {
-        const { accessToken } = await authService.refreshAccessToken(req.cookies.refreshToken);
+    const { accessToken } = await authService.refreshAccessToken(req.cookies.refreshToken);
 
-        res.json({
-            success: true,
-            accessToken
-        });
-    } catch (error) {
-        res.status(401);
-        throw new Error(error.message);
-    }
+    res.status(200).json({
+        success: true,
+        accessToken
+    });
 };
 
 // @desc    Logout user / Clear cookie

@@ -27,6 +27,12 @@ const errorHandler = (err, req, res, next) => {
         statusCode = 404;
     }
 
+    // Authorization & Authentication Errors
+    if (message.includes('Not authorized') || message === 'Invalid email or password') {
+        const isAuthError = message.includes('no token') || message.includes('failed') || message === 'Invalid email or password';
+        statusCode = isAuthError ? 401 : 403;
+    }
+
     res.status(statusCode).json({
         success: false,
         message,

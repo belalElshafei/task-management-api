@@ -47,7 +47,7 @@ const taskSchema = new mongoose.Schema(
     }
 );
 
-// Compound indexes for optimization
+taskSchema.index({ project: 1, createdAt: -1 });
 taskSchema.index({ project: 1, assignedTo: 1 });
 taskSchema.index({ project: 1, createdBy: 1 });
 

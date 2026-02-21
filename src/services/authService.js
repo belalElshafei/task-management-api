@@ -43,22 +43,20 @@ class AuthService {
      * Refresh Access Token
      * @param {string} refreshToken 
      */
-    async refreshAccessToken(refreshToken) {
-        if (!refreshToken) {
+    async refreshAccessToken(token) {
+        if (!token) {
             throw new Error('Not authorized, no refresh token');
         }
 
         try {
-            const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-
+            const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
             const user = await User.findById(decoded.id);
+
             if (!user) {
-                throw new Error('User not found');
+                throw new Error('Not authorized: User no longer exists');
             }
 
-            const accessToken = generateAccessToken(user._id);
-
-            return { accessToken };
+            return { accessToken: generateAccessToken(user._id) };
         } catch (error) {
             throw new Error('Not authorized, token failed');
         }

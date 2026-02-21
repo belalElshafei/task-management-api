@@ -24,11 +24,6 @@ const getTasks = async (req, res) => {
 const getTask = async (req, res) => {
     const task = await taskService.getTask(req.user.id, req.params.projectId, req.params.id);
 
-    if (!task) {
-        res.status(404);
-        throw new Error('Task not found');
-    }
-
     res.status(200).json({
         success: true,
         data: task
@@ -75,11 +70,6 @@ const updateTask = async (req, res) => {
 
     const task = await taskService.updateTask(req.user.id, req.params.projectId, req.params.id, updateData);
 
-    if (!task) {
-        res.status(404);
-        throw new Error('Task not found');
-    }
-
     res.status(200).json({
         success: true,
         data: task
@@ -90,12 +80,7 @@ const updateTask = async (req, res) => {
 // @route   DELETE /api/projects/:projectId/tasks/:id
 // @access  Private
 const deleteTask = async (req, res) => {
-    const task = await taskService.deleteTask(req.user.id, req.params.projectId, req.params.id);
-
-    if (!task) {
-        res.status(404);
-        throw new Error('Task not found');
-    }
+    await taskService.deleteTask(req.user.id, req.params.projectId, req.params.id);
 
     res.status(200).json({
         success: true,
