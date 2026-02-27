@@ -1,10 +1,12 @@
 services:
-  app:
-    build: .
+  backend:
+    build:
+      context: .
+      dockerfile: ./apps/backend/Dockerfile
     ports:
       - "5000:5000"
     env_file:
-      - .env
+      - ./apps/backend/.env
     environment:
       - NODE_ENV=production
       - MONGO_URI=mongodb://mongo:27017/taskmanager
@@ -12,6 +14,20 @@ services:
     depends_on:
       - mongo
       - redis
+    networks:
+      - task-network
+    restart: always
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ./apps/frontend/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:5000
+    depends_on:
+      - backend
     networks:
       - task-network
     restart: always
