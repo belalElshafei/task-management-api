@@ -3,22 +3,21 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Enable BuildKit cache for npm
-ENV NPM_CONFIG_CACHE=/root/.npm
-
 # Copy root package files
 COPY package*.json ./
 # Copy ALL package.json files for workspace resolution
 COPY apps/backend/package.json ./apps/backend/
 COPY apps/frontend/package.json ./apps/frontend/
 
-# Use BuildKit cache mount to speed up npm install
-# We remove --quiet so the user can see it's actually moving
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --workspace=@task-management/frontend --no-audit --no-fund
+# Install dependencies for the frontend workspace
+RUN npm ci --workspace=@task-management/frontend --no-audit --no-fund
 
 # Copy frontend source
 COPY apps/frontend ./apps/frontend
+
+# Provide NEXT_PUBLIC_API_URL at build time
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 # Build the application
 RUN npm run build --workspace=@task-management/frontend
