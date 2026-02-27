@@ -4,20 +4,18 @@ FROM node:20-alpine
 # Set working directory
 WORKDIR /app
 
-# Copy root package files
+# Copy package files (context is now apps/backend)
 COPY package*.json ./
-# Copy ALL package.json files for workspace resolution
-COPY apps/backend/package*.json ./apps/backend/
-COPY apps/frontend/package*.json ./apps/frontend/
 
-# Install only production dependencies for the backend workspace
-RUN npm ci --workspace=@task-management/backend --omit=dev --no-audit --no-fund
+# Install only production dependencies
+RUN npm ci --omit=dev --no-audit --no-fund
 
-# Copy backend source code
-COPY apps/backend ./apps/backend
+# Copy source code
+COPY . .
 
 # Expose the API port
 EXPOSE 5000
 
 # Start command
-CMD ["node", "apps/backend/server.js"]
+# We run node server.js directly from the /app root
+CMD ["node", "server.js"]
