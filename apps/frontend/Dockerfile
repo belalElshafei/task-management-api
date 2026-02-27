@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy package files (context is now apps/frontend)
 COPY package*.json ./
 
-# Install dependencies (no more workspace needed)
-RUN npm ci --no-audit --no-fund
+# Install dependencies (use npm install since we are in a flattened subfolder without a local lockfile)
+RUN npm install --no-audit --no-fund --legacy-peer-deps
 
 # Copy source
 COPY . .
@@ -27,7 +27,6 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 # STANDALONE output
-# In standalone mode, files are shifted. We need to copy from .next/standalone
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/static ./.next/static

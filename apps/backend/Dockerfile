@@ -8,7 +8,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install only production dependencies
-RUN npm ci --omit=dev --no-audit --no-fund
+# Use npm install since we are in a flattened subfolder without a local lockfile
+RUN npm install --omit=dev --no-audit --no-fund --legacy-peer-deps
 
 # Copy source code
 COPY . .
@@ -17,5 +18,4 @@ COPY . .
 EXPOSE 5000
 
 # Start command
-# We run node server.js directly from the /app root
 CMD ["node", "server.js"]
