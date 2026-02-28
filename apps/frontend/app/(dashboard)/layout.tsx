@@ -15,10 +15,13 @@ export default function DashboardLayout({
     const { mutate: logout } = useLogout();
 
     useEffect(() => {
-        if (isError) {
+        // Only redirect if we have definitively failed to load the user (isError)
+        // AND we are no longer in an isLoading state.
+        if (isError && !isLoading) {
+            console.log('User verification failed, redirecting to login...');
             router.push('/login');
         }
-    }, [isError, router]);
+    }, [isError, isLoading, router]);
 
     const handleLogout = () => {
         console.log('Attempting logout...');

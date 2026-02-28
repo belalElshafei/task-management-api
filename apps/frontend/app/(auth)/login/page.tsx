@@ -18,8 +18,8 @@ export default function LoginPage() {
 
         login({ email, password }, {
             onSuccess: () => {
-                console.log('Login successful, redirecting to dashboard...');
-                router.push('/dashboard');
+                console.log('Login successful, forcing reload to dashboard...');
+                window.location.href = '/dashboard';
             },
             onError: (err: any) => {
                 console.error('Login error:', err);
