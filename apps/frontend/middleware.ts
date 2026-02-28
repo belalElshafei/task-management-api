@@ -5,31 +5,34 @@ export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
     const token = request.cookies.get('token')?.value;
 
+    // 1. Logging & Debugging
     console.log(`[Middleware] Checking path: ${pathname} | Token present: ${!!token}`);
-    console.log('DEBUG: Middleware Cookies', request.cookies.getAll());
 
-    // Define public routes
+    // 2. Identify Request Types
+    const isNextInternalRequest = request.headers.get('x-nextjs-data') || pathname.startsWith('/_next');
     const isPublicRoute = pathname === '/login' || pathname === '/register';
 
-    // 1. Safety: If we're already on /login, never redirect TO /login
+    // 3. Safety: If we're already on /login, never redirect TO /login
     if (pathname === '/login') return NextResponse.next();
 
-    // 2. Protect Dashboard: Soften redirect for the main dashboard path
-    // If no token and trying to access a protected route (excluding root dashboard for hydration)
-    if (!token && !isPublicRoute && pathname !== '/' && pathname !== '/dashboard') {
+    // 4. Soften Redirects:
+    // Only redirect if:
+    // - No token is present
+    // - It's NOT a public route
+    // - It's NOT an internal Next.js data fetch (don't break hydration/navigation)
+    // - Path is a protected area (dashboard, etc)
+    if (!token && !isPublicRoute && !isNextInternalRequest && pathname !== '/') {
         console.warn(`[Middleware] No token found for protected path: ${pathname}. Redirecting to /login.`);
         return NextResponse.redirect(new URL('/login', request.url));
     }
 
-    // 3. Prevent Login access if already authenticated
-    if (token && isPublicRoute) {
-        console.log(`[Middleware] Authenticated user on public route. Redirecting to /dashboard.`);
-        return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-
-    return NextResponse.next();
+    // 5. Success: Add no-cache headers to prevent stale auth states
+    const response = NextResponse.next();
+    response.headers.set('x-middleware-cache', 'no-cache');
+    return response;
 }
 
 export const config = {
+    // Matcher covers all routes except static assets and API
     matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };

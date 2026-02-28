@@ -16,9 +16,10 @@ export default function DashboardLayout({
 
     useEffect(() => {
         // Only redirect if authentication has definitively failed (401 Unauthorized)
-        // AND we are no longer in an initial loading state.
+        // AND we are strictly NOT in a loading state. 
+        // This prevents redirects during fast client-side transitions.
         const axiosError = error as any;
-        if (isError && !isLoading && axiosError?.response?.status === 401) {
+        if (!isLoading && isError && axiosError?.response?.status === 401) {
             console.warn('[Dashboard] Unauthorized access. Redirecting to login.');
             router.replace('/login');
         }
