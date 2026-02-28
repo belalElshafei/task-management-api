@@ -15,11 +15,11 @@ export default function DashboardLayout({
     const { mutate: logout } = useLogout();
 
     useEffect(() => {
-        // Only redirect if we have definitively failed to load the user (isError)
-        // AND we are no longer in an isLoading state.
+        // Only redirect if authentication has definitively failed (isError)
+        // AND we are no longer in an initial loading state.
         if (isError && !isLoading) {
-            console.log('User verification failed, redirecting to login...');
-            router.push('/login');
+            console.warn('[Dashboard] Auth verification failed. Redirecting to login.');
+            router.replace('/login');
         }
     }, [isError, isLoading, router]);
 

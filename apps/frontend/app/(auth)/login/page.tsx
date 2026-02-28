@@ -18,8 +18,10 @@ export default function LoginPage() {
 
         login({ email, password }, {
             onSuccess: () => {
-                console.log('Login successful, forcing reload to dashboard...');
-                window.location.href = '/dashboard';
+                console.log('Login successful, waiting for cookie sync...');
+                setTimeout(() => {
+                    window.location.replace('/dashboard');
+                }, 800);
             },
             onError: (err: any) => {
                 console.error('Login error:', err);
