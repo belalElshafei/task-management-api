@@ -6,6 +6,7 @@ export function middleware(request: NextRequest) {
     const token = request.cookies.get('token')?.value;
 
     console.log(`[Middleware] Checking path: ${pathname} | Token present: ${!!token}`);
+    console.log('DEBUG: Middleware Cookies', request.cookies.getAll());
 
     // Define public routes
     const isPublicRoute = pathname === '/login' || pathname === '/register';
@@ -13,8 +14,9 @@ export function middleware(request: NextRequest) {
     // 1. Safety: If we're already on /login, never redirect TO /login
     if (pathname === '/login') return NextResponse.next();
 
-    // 2. Protect Dashboard: If no token, redirect to login
-    if (!token && !isPublicRoute && pathname !== '/') {
+    // 2. Protect Dashboard: Soften redirect for the main dashboard path
+    // If no token and trying to access a protected route (excluding root dashboard for hydration)
+    if (!token && !isPublicRoute && pathname !== '/' && pathname !== '/dashboard') {
         console.warn(`[Middleware] No token found for protected path: ${pathname}. Redirecting to /login.`);
         return NextResponse.redirect(new URL('/login', request.url));
     }

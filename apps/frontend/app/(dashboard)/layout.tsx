@@ -11,17 +11,18 @@ export default function DashboardLayout({
     children: React.ReactNode;
 }) {
     const router = useRouter();
-    const { data: user, isLoading, isError } = useMe();
+    const { data: user, isLoading, isError, error } = useMe();
     const { mutate: logout } = useLogout();
 
     useEffect(() => {
-        // Only redirect if authentication has definitively failed (isError)
+        // Only redirect if authentication has definitively failed (401 Unauthorized)
         // AND we are no longer in an initial loading state.
-        if (isError && !isLoading) {
-            console.warn('[Dashboard] Auth verification failed. Redirecting to login.');
+        const axiosError = error as any;
+        if (isError && !isLoading && axiosError?.response?.status === 401) {
+            console.warn('[Dashboard] Unauthorized access. Redirecting to login.');
             router.replace('/login');
         }
-    }, [isError, isLoading, router]);
+    }, [isError, isLoading, error, router]);
 
     const handleLogout = () => {
         console.log('Attempting logout...');

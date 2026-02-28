@@ -25,6 +25,9 @@ const swaggerSpec = require('./src/config/swagger');
 dotenv.config();
 const app = express();
 
+// Trust proxy for secure cookies behind a proxy (e.g. Railway)
+app.set('trust proxy', 1);
+
 // 2. Database & Service Connections
 if (process.env.NODE_ENV !== 'test') {
     connectDB();
