@@ -9,8 +9,8 @@ const sendTokenResponse = (authData, statusCode, res) => {
     // Cookie options
     const options = {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        secure: true, // Required for sameSite: 'none'
+        sameSite: 'none',
     };
 
     const refreshOptions = {
@@ -79,8 +79,13 @@ const refreshToken = async (req, res) => {
 // @route   POST /api/auth/logout
 // @access  Private
 const logout = async (req, res) => {
-    res.clearCookie('refreshToken', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
-    res.clearCookie('token', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
+    const cookieOptions = {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none'
+    };
+    res.clearCookie('refreshToken', cookieOptions);
+    res.clearCookie('token', cookieOptions);
 
     logger.info('User logged out successfully');
 
